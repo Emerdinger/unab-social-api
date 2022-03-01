@@ -22,7 +22,7 @@ app.use(cors());
 app.use(express.json());
 app.use(morgan("common"));
 
-const port = process.env.PORT || 80;
+const port = process.env.PORT || 443;
 
 // Rutas
 
