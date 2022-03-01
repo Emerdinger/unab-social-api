@@ -55,7 +55,7 @@ router.post("/login", async (req, res) => {
     try {
         // Buscar si existe el usuario
 
-        const usuario = await User.findOne({username: req.body.email.toLowerCase()});
+        const usuario = await User.findOne({email: req.body.email.toLowerCase()});
         !usuario && res.json({error: "Usuario no encontrado"});
 
         // Confirmar la contraseña
