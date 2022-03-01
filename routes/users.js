@@ -2,6 +2,7 @@ const router = require("express").Router();
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require('jsonwebtoken');
+const transporter = require("../mails/mailer")
 const secret = process.env.SECRETKEY;
 
 // Registrar un usuario
@@ -10,16 +11,16 @@ router.post("/registro", async (req, res) => {
 
     if (username == "" || username == null || fullName == "" || fullName == null || email == "" || email == null || password == "" || password == null
         || mobile == "" || mobile == null || birthday == "" || birthday == null || gender == "" || gender == null) {
-        return res.json({code: 409, message: "Faltan datos por completar."});
+        return res.json({code: 409, error: "Faltan datos por completar."});
     }
 
     if ( password != confirmPassword ) {
-        return res.json({code: 400, message: "Las contraseñas deben ser iguales."});
+        return res.json({code: 400, error: "Las contraseñas deben ser iguales."});
     }
 
     if (!email.toLowerCase().endsWith("@unab.edu.co")){
         console.log(email)
-        return res.json({code: 400, message: "El correo debe ser un correo UNAB."});
+        return res.json({code: 400, error: "El correo debe ser un correo UNAB."});
     }
 
     try {
@@ -39,12 +40,27 @@ router.post("/registro", async (req, res) => {
 
         // Guardar usuario en la base de datos
         const usuario = await nuevoUsuario.save();
+
+        try {
+            await transporter.sendMail({
+                from: '"UNAB-SOCIAL 🌐" <servicesemer@gmail.com>',
+                to: email.toLowerCase(),
+                subject: "Cuenta creada correctamente ✔",
+                html: `
+            <br>La creación de su cuenta ha sido exitosa 🥳</b>  
+            `
+            })
+        } catch (e) {
+            res.json({code: 500, error: "Algo salio mal con el envío del correo."});
+        }
+
         res.status(200).json(usuario);
+
     } catch (e) {
         if (e.keyValue.email){
-            res.json({code: 500, message: `El correo ${e.keyValue.email} ya esta en uso.`})
+            res.json({code: 500, error: `El correo ${e.keyValue.email} ya esta en uso.`})
         } else {
-            res.json({code: 500, message: `El usuario ${e.keyValue.username} ya esta en uso.`})
+            res.json({code: 500, error: `El usuario ${e.keyValue.username} ya esta en uso.`})
         }
     }
 })
@@ -76,7 +92,7 @@ router.post("/login", async (req, res) => {
 router.get("/userData", verificarToken, async (req, res) => {
     const user = await User.findById(req.userId).select("username email gender birthday mobile profilePicture coverPicture followers followings isAdmin description city from relationship");
     res.status(200).json(user);
-})
+});
 
 // Editar usuario
 router.put("/", verificarToken, async(req, res) => {
