@@ -2,11 +2,14 @@ const router = require("express").Router();
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require('jsonwebtoken');
-const transporter = require("../mails/mailer")
+const transporter = require("../mails/mailer");
+const {randomId} = require("../scripts/randomId");
+const {verificationMail} = require("../mails/verificationMail");
 const secret = process.env.SECRETKEY;
 
 // Registrar un usuario
 router.post("/registro", async (req, res) => {
+
     const {username, fullName, email, password, confirmPassword, mobile, birthday, gender} = req.body;
 
     if (username == "" || username == null || fullName == "" || fullName == null || email == "" || email == null || password == "" || password == null
@@ -17,16 +20,17 @@ router.post("/registro", async (req, res) => {
     if ( password != confirmPassword ) {
         return res.json({code: 400, error: "Las contraseñas deben ser iguales."});
     }
-
+/**
     if (!email.toLowerCase().endsWith("@unab.edu.co")){
         console.log(email)
         return res.json({code: 400, error: "El correo debe ser un correo UNAB."});
     }
-
+**/
     try {
         // Generar una nueva contraseña encriptada
         const hashedPassword = await bcrypt.hashSync(password, 10);
 
+        const codigoVerificacion = randomId();
         // Crear un nuevo usuario
         const nuevoUsuario = new User({
             username: username.toLowerCase(),
@@ -35,7 +39,8 @@ router.post("/registro", async (req, res) => {
             password: hashedPassword,
             mobile: mobile,
             birthday: birthday,
-            gender: gender
+            gender: gender,
+            actualCode: codigoVerificacion.toString()
         })
 
         // Guardar usuario en la base de datos
@@ -46,15 +51,13 @@ router.post("/registro", async (req, res) => {
                 from: '"UNAB-SOCIAL 🌐" <servicesemer@gmail.com>',
                 to: email.toLowerCase(),
                 subject: "Cuenta creada correctamente ✔",
-                html: `
-            <br>La creación de su cuenta ha sido exitosa 🥳</b>  
-            `
+                html: verificationMail(codigoVerificacion)
             })
         } catch (e) {
             res.json({code: 500, error: "Algo salio mal con el envío del correo."});
         }
 
-        res.status(200).json(usuario);
+        res.status(200).json({message: "Cuenta creada correctamente, se envió un correo a tú cuenta para ser activada"});
 
     } catch (e) {
         if (e.keyValue.email){
@@ -70,9 +73,17 @@ router.post("/login", async (req, res) => {
 
     try {
         // Buscar si existe el usuario
-
         const usuario = await User.findOne({email: req.body.email.toLowerCase()});
-        !usuario && res.json({error: "Usuario no encontrado"});
+
+        if (!usuario) {
+            return res.json({error: "Usuario no encontrado"});
+        }
+
+
+
+        if (usuario.verificated == false) {
+            res.json({error: "La cuenta aún no está verificada"});
+        }
 
         // Confirmar la contraseña
         const contraseñaValida = await bcrypt.compare(req.body.password, usuario.password);
@@ -84,6 +95,7 @@ router.post("/login", async (req, res) => {
 
 
     } catch (e) {
+        console.log(e)
         return res.status(500).json(e);
     }
 })

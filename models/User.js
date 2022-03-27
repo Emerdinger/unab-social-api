@@ -17,6 +17,8 @@ const UserSchema = new mongoose.Schema({
     city: { type: String, max: 50 },
     from: { type: String, max: 50 },
     relationship: { type: String, default: "Solter@" },
+    verificated: {type: Boolean, default: false},
+    actualCode: {type: String, default: ""}
 }, { timestamps: true });
 
 module.exports = mongoose.model("User", UserSchema);

@@ -22,12 +22,13 @@ app.use(cors());
 app.use(express.json());
 app.use(morgan("common"));
 
-const port = process.env.PORT || 443;
+const port = process.env.PORT || 5000;
 
 // Rutas
 
 app.use("/api/users", require("./routes/users"));
 app.use("/api/posts", require("./routes/posts"));
+app.use("/api/verifications", require("./routes/verifications"));
 
 // Correr el server
 
